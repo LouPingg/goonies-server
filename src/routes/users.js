@@ -1,6 +1,6 @@
-// src/routes/users.js
 import { Router } from "express";
 import multer from "multer";
+import bcrypt from "bcrypt";
 import { auth } from "../middleware/auth.js";
 import { adminOnly } from "../middleware/admin.js";
 import User from "../models/User.js";
@@ -60,7 +60,6 @@ r.patch("/me", auth, upload.single("file"), async (req, res) => {
 
     // Normaliser titles : peut arriver en array (JSON) ou string
     if (typeof titles === "string") {
-      // essayer JSON d'abord, sinon split par virgule
       try {
         const parsed = JSON.parse(titles);
         if (Array.isArray(parsed)) titles = parsed;
@@ -72,14 +71,25 @@ r.patch("/me", auth, upload.single("file"), async (req, res) => {
       }
     }
     if (!Array.isArray(titles)) {
-      // ne pas écraser si non fourni
-      titles = undefined;
+      titles = undefined; // ne pas écraser si non fourni
     }
 
     const patch = {};
     if (displayName?.trim()) patch.displayName = displayName.trim();
     if (avatarUrl?.trim()) patch.avatarUrl = avatarUrl.trim();
     if (titles) patch.titles = titles;
+
+    // 🔹 AJOUT ICI (dans la route, pas en haut du fichier)
+    const { bio, cardTheme } = req.body;
+    if (typeof bio === "string") {
+      patch.bio = bio.trim().slice(0, 400); // accepte vide
+    }
+    if (
+      typeof cardTheme === "string" &&
+      ["yellow", "blue", "green", "red"].includes(cardTheme)
+    ) {
+      patch.cardTheme = cardTheme;
+    }
 
     const me = await User.findByIdAndUpdate(req.user.id, patch, {
       new: true,
@@ -91,7 +101,7 @@ r.patch("/me", auth, upload.single("file"), async (req, res) => {
   }
 });
 
-// (le reste inchangé : delete admin-only, etc.)
+// 🗑️ Supprimer un user (admin)
 r.delete("/:id", auth, adminOnly, async (req, res) => {
   const { id } = req.params;
   const user = await User.findById(id);
@@ -103,5 +113,39 @@ r.delete("/:id", auth, adminOnly, async (req, res) => {
   await User.findByIdAndDelete(id);
   res.json({ ok: true });
 });
+
+// 🔐 NOUVELLE ROUTE : admin réinitialise le MDP d’un user (min 6 chars)
+r.patch("/:id/password", auth, adminOnly, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ error: "Password too short (min 6)" });
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: "Not found" });
+    if (user.role === "admin") {
+      return res.status(400).json({ error: "Cannot reset admin password" });
+    }
+
+    const passwordHash = await bcrypt.hash(String(password), 10);
+    await User.findByIdAndUpdate(user._id, { passwordHash });
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("admin reset pwd error:", e);
+    res.status(500).json({ error: "Reset failed" });
+  }
+});
+
+if (typeof bio === "string") {
+  const clean = bio.trim().slice(0, 400);
+  if (clean) patch.bio = clean;
+  else if (bio === "") patch.bio = "";
+}
+if (
+  typeof cardTheme === "string" &&
+  ["yellow", "blue", "red"].includes(cardTheme)
+) {
+  patch.cardTheme = cardTheme;
+}
 
 export default r;

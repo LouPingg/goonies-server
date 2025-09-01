@@ -1,21 +1,20 @@
 import mongoose from "mongoose";
 
-const PasswordResetSchema = new mongoose.Schema(
+const schema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
-    tokenHash: { type: String, required: true, index: true },
+    tokenHash: { type: String, required: true, index: true, unique: true },
     expiresAt: { type: Date, required: true, index: true },
     used: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-// Auto-suppression après expiration
-PasswordResetSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// TTL automatique (Mongo supprime les docs après "expiresAt")
+schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-export default mongoose.model("PasswordReset", PasswordResetSchema);
+export default mongoose.model("PasswordReset", schema);
