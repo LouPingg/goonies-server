@@ -14,7 +14,6 @@ const schema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// TTL automatique (Mongo supprime les docs après "expiresAt")
 schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model("PasswordReset", schema);

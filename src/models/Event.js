@@ -5,8 +5,8 @@ const EventSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
     imageUrl: { type: String, default: "" },
-    startAt: { type: Date, required: true }, // UTC
-    endAt: { type: Date, required: true }, // UTC
+    startAt: { type: Date, required: true },
+    endAt: { type: Date, required: true },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

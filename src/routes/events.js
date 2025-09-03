@@ -7,13 +7,11 @@ import { uploadBufferToCloudinary } from "../utils/cloudinary.js";
 const r = Router();
 const upload = multer({ limits: { fileSize: 12 * 1024 * 1024 } });
 
-// Liste complète
 r.get("/", async (_req, res) => {
   const items = await Event.find().sort({ startAt: -1 });
   res.json(items);
 });
 
-// Actifs (pour la Home)
 r.get("/active", async (_req, res) => {
   const now = new Date();
   const items = await Event.find({
@@ -25,7 +23,6 @@ r.get("/active", async (_req, res) => {
   res.json(items);
 });
 
-// Créer (URL ou fichier)
 r.post("/", auth, upload.single("file"), async (req, res) => {
   const title = (req.body.title || "").trim();
   if (!title) return res.status(400).json({ error: "Title required" });
@@ -60,7 +57,6 @@ r.post("/", auth, upload.single("file"), async (req, res) => {
   res.json(item);
 });
 
-// Supprimer (owner/admin)
 r.delete("/:id", auth, async (req, res) => {
   const item = await Event.findById(req.params.id);
   if (!item) return res.status(404).json({ error: "Not found" });

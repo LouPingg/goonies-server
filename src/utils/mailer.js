@@ -1,4 +1,3 @@
-// Utilitaire mail — Resend si dispo, sinon fallback "console.log" en dev
 import { Resend } from "resend";
 
 const hasResend = !!process.env.RESEND_API_KEY;
@@ -17,7 +16,6 @@ export async function sendResetEmail(to, resetUrl) {
   `;
 
   if (!hasResend) {
-    // Dev fallback
     console.log("📧 [DEV] Reset email ->", { to, resetUrl });
     return;
   }

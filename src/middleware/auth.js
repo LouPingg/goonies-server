@@ -6,7 +6,7 @@ export function auth(req, res, next) {
   if (!token) return res.status(401).json({ error: "No token" });
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = payload; // { id, role }
+    req.user = payload;
     next();
   } catch {
     res.status(401).json({ error: "Invalid token" });

@@ -9,7 +9,6 @@ import { uploadBufferToCloudinary } from "../utils/cloudinary.js";
 const r = Router();
 const upload = multer({ limits: { fileSize: 8 * 1024 * 1024 } });
 
-// Liste publique (sans passwordHash)
 r.get("/", async (req, res) => {
   const q = (req.query.q || "").trim();
   const page = Math.max(1, parseInt(req.query.page || "1", 10));
@@ -44,13 +43,10 @@ r.get("/me", auth, async (req, res) => {
   res.json(me);
 });
 
-// ✅ Mise à jour profil courant (JSON ou multipart + file)
 r.patch("/me", auth, upload.single("file"), async (req, res) => {
   try {
-    // Champs possibles depuis le front
     let { displayName = "", avatarUrl = "", titles } = req.body;
 
-    // Si un fichier est envoyé, on l’upload et on remplace avatarUrl
     if (req.file) {
       avatarUrl = await uploadBufferToCloudinary(
         req.file.buffer,
@@ -58,7 +54,6 @@ r.patch("/me", auth, upload.single("file"), async (req, res) => {
       );
     }
 
-    // Normaliser titles : peut arriver en array (JSON) ou string
     if (typeof titles === "string") {
       try {
         const parsed = JSON.parse(titles);
@@ -71,7 +66,7 @@ r.patch("/me", auth, upload.single("file"), async (req, res) => {
       }
     }
     if (!Array.isArray(titles)) {
-      titles = undefined; // ne pas écraser si non fourni
+      titles = undefined;
     }
 
     const patch = {};
@@ -79,10 +74,9 @@ r.patch("/me", auth, upload.single("file"), async (req, res) => {
     if (avatarUrl?.trim()) patch.avatarUrl = avatarUrl.trim();
     if (titles) patch.titles = titles;
 
-    // 🔹 AJOUT ICI (dans la route, pas en haut du fichier)
     const { bio, cardTheme } = req.body;
     if (typeof bio === "string") {
-      patch.bio = bio.trim().slice(0, 400); // accepte vide
+      patch.bio = bio.trim().slice(0, 400);
     }
     if (
       typeof cardTheme === "string" &&
@@ -101,7 +95,6 @@ r.patch("/me", auth, upload.single("file"), async (req, res) => {
   }
 });
 
-// 🗑️ Supprimer un user (admin)
 r.delete("/:id", auth, adminOnly, async (req, res) => {
   const { id } = req.params;
   const user = await User.findById(id);
@@ -114,7 +107,6 @@ r.delete("/:id", auth, adminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 
-// 🔐 NOUVELLE ROUTE : admin réinitialise le MDP d’un user (min 6 chars)
 r.patch("/:id/password", auth, adminOnly, async (req, res) => {
   try {
     const { password } = req.body || {};

@@ -6,7 +6,6 @@ import Allow from "../models/Allow.js";
 
 const r = Router();
 
-/* ---------- SEED ADMIN (si aucun admin) ---------- */
 r.post("/seed-admin", async (_req, res) => {
   const exists = await User.findOne({ role: "admin" });
   if (exists) return res.json({ ok: true, already: true });
@@ -21,7 +20,6 @@ r.post("/seed-admin", async (_req, res) => {
   res.json({ ok: true, admin: { id: admin.id } });
 });
 
-/* ---------- REGISTER (username + password) ---------- */
 r.post("/register", async (req, res) => {
   try {
     const { username, password } = req.body || {};
@@ -37,13 +35,11 @@ r.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Password too short (min 6)" });
     }
 
-    // Allowlist (pseudo autorisé à s'inscrire)
     const allowed = await Allow.findOne({ username: u });
     if (!allowed) {
       return res.status(403).json({ error: "Username not allowed" });
     }
 
-    // Unicité du username
     const existsUser = await User.findOne({ username: u });
     if (existsUser) {
       return res.status(409).json({ error: "Username taken" });
@@ -69,7 +65,6 @@ r.post("/register", async (req, res) => {
   }
 });
 
-/* ---------- LOGIN (username + password) ---------- */
 r.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body || {};

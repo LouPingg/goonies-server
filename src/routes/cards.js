@@ -16,20 +16,14 @@ cloudinary.config({
 
 const upload = multer({ limits: { fileSize: 8 * 1024 * 1024 } });
 
-/* ---------- Layout / réglages ---------- */
 const CFG = {
-  // Fenêtre de l’illustration dans la carte (px à la taille “design” du template)
   art: { x: 0, y: -115, w: 600, h: 450, radius: 24 },
 
-  // Cadrage de l’avatar dans la fenêtre (Cloudinary)
-  gravity: "auto:faces", // "auto:faces" | "auto:subject" | "center"
-  zoom: 1.0, // 1 = neutre
+  gravity: "auto:faces",
+  zoom: 1.0,
 
-  // Titre (name) — on garde ton y/size/color, on ajoute w pour centrer proprement
-  // (x est conservé mais n’est plus utilisé avec le centrage)
   name: { x: 200, y: 88, w: 560, size: 56, color: "#111111" },
 
-  // Description (bio) — tes valeurs conservées
   desc: {
     x: 100,
     y: 670,
@@ -40,7 +34,6 @@ const CFG = {
     maxLen: 400,
   },
 
-  // Tags — tes valeurs conservées
   tags: {
     x: 100,
     y: 870,
@@ -51,7 +44,6 @@ const CFG = {
     max: 3,
   },
 
-  // Tes gabarits sont à la racine (sans dossier)
   themes: {
     yellow: "base-yellow-v1",
     blue: "base-blue-v1",
@@ -59,11 +51,9 @@ const CFG = {
     red: "base-red-v1",
   },
 
-  // Liseré vert autour de l’avatar pour calage visuel (debug)
   debugBorder: false,
 };
 
-/* ---------- Helpers ---------- */
 function extractPublicIdFromCloudinaryUrl(url) {
   try {
     const u = new URL(url);
@@ -103,9 +93,6 @@ async function getTemplateVersion(publicId) {
   }
 }
 
-/* =========================================================
-   1) PREVIEW UPLOAD — reçoit un fichier et renvoie une URL Cloudinary
-   ========================================================= */
 r.post("/preview-upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file" });
@@ -120,9 +107,6 @@ r.post("/preview-upload", upload.single("file"), async (req, res) => {
   }
 });
 
-/* =========================================================
-   2) PREVIEW (AVANT la route paramétrée !)
-   ========================================================= */
 r.get("/preview.png", async (req, res) => {
   try {
     const themeKey = String(req.query.theme || "yellow").toLowerCase();
@@ -135,7 +119,6 @@ r.get("/preview.png", async (req, res) => {
       CFG.desc.maxLen
     );
 
-    // tags via ?tag=a&tag=b… ou ?tags=a|b|c
     let tagsArr = [];
     if (Array.isArray(req.query.tag)) {
       tagsArr = req.query.tag.map((s) => String(s)).filter(Boolean);
@@ -147,7 +130,6 @@ r.get("/preview.png", async (req, res) => {
     }
     const tags = tagsArr.slice(0, CFG.tags.max).join(CFG.tags.sep);
 
-    // Source avatar: Cloudinary (public_id) ou fetch d’une URL distante
     const rawAvatar = req.query.avatar ? String(req.query.avatar) : "";
     let overlayArt;
     const pid = extractPublicIdFromCloudinaryUrl(rawAvatar);
@@ -160,16 +142,13 @@ r.get("/preview.png", async (req, res) => {
       overlayArt = { public_id: remote, type: "fetch", resource_type: "image" };
     }
 
-    // Options de cadrage (override via query si besoin)
     const gravity = req.query.g || CFG.gravity;
     const zoom = req.query.z ? Number(req.query.z) : CFG.zoom;
     const debug =
       req.query.debug === "1" || req.query.debug === "true" || CFG.debugBorder;
 
-    // Transformations
     const t = [];
 
-    // 1) avatar dans la fenêtre
     const avatarLayer = {
       overlay: overlayArt,
       width: CFG.art.w,
@@ -183,7 +162,6 @@ r.get("/preview.png", async (req, res) => {
     t.push(avatarLayer);
     t.push({ flags: "layer_apply", x: CFG.art.x, y: CFG.art.y });
 
-    // 2) name — CENTRÉ EN HAUT
     if (name) {
       t.push({
         overlay: {
@@ -191,7 +169,7 @@ r.get("/preview.png", async (req, res) => {
           font_size: CFG.name.size,
           text: name,
           text_align: "center",
-          font_weight: "bold", // optionnel
+          font_weight: "bold",
         },
         color: CFG.name.color,
         width: CFG.name.w || 560,
@@ -199,12 +177,11 @@ r.get("/preview.png", async (req, res) => {
       });
       t.push({
         flags: "layer_apply",
-        gravity: "north", // ← centre horizontalement en haut
-        y: CFG.name.y, // ← on garde ta hauteur
+        gravity: "north",
+        y: CFG.name.y,
       });
     }
 
-    // 3) bio (alignée à gauche, tes valeurs)
     if (bio) {
       t.push({
         overlay: {
@@ -225,7 +202,6 @@ r.get("/preview.png", async (req, res) => {
       });
     }
 
-    // 4) tags (alignés à gauche, tes valeurs)
     if (tags) {
       t.push({
         overlay: { font_family: "Arial", font_size: CFG.tags.size, text: tags },
@@ -241,7 +217,6 @@ r.get("/preview.png", async (req, res) => {
       });
     }
 
-    // sortie (width finale)
     const out = [];
     const w = parseInt(req.query.w || "0", 10);
     if (w > 0) out.push({ width: w, crop: "scale" });
@@ -263,9 +238,6 @@ r.get("/preview.png", async (req, res) => {
   }
 });
 
-/* =========================================================
-   3) CARTE UTILISATEUR (/:ref.png) — id Mongo ou username
-   ========================================================= */
 r.get("/:ref.png", async (req, res) => {
   try {
     const ref = String(req.params.ref || "").trim();
@@ -289,7 +261,6 @@ r.get("/:ref.png", async (req, res) => {
       : [];
     const tags = tagsArr.slice(0, CFG.tags.max).join(CFG.tags.sep);
 
-    // avatar (cloudinary url -> public_id, sinon fetch)
     let overlayArt;
     const pid = extractPublicIdFromCloudinaryUrl(user.avatarUrl || "");
     if (pid) {
@@ -301,7 +272,6 @@ r.get("/:ref.png", async (req, res) => {
       overlayArt = { public_id: remote, type: "fetch", resource_type: "image" };
     }
 
-    // Même cadrage que preview (override possible via ?g= & ?z=)
     const gravity = req.query.g || CFG.gravity;
     const zoom = req.query.z ? Number(req.query.z) : CFG.zoom;
     const debug =
@@ -309,7 +279,6 @@ r.get("/:ref.png", async (req, res) => {
 
     const t = [];
 
-    // avatar
     const avatarLayer = {
       overlay: overlayArt,
       width: CFG.art.w,
@@ -323,7 +292,6 @@ r.get("/:ref.png", async (req, res) => {
     t.push(avatarLayer);
     t.push({ flags: "layer_apply", x: CFG.art.x, y: CFG.art.y });
 
-    // name — CENTRÉ EN HAUT (mêmes règles que preview)
     t.push({
       overlay: {
         font_family: "Arial",
@@ -379,7 +347,6 @@ r.get("/:ref.png", async (req, res) => {
       });
     }
 
-    // sortie
     const out = [];
     const w = parseInt(req.query.w || "0", 10);
     if (w > 0) out.push({ width: w, crop: "scale" });

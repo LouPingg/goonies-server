@@ -5,7 +5,7 @@ import Gallery from "../models/Gallery.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinary.js";
 
 const r = Router();
-const upload = multer(); // mémoire
+const upload = multer();
 
 r.get("/", async (req, res) => {
   const items = await Gallery.find().sort({ createdAt: -1 });
@@ -15,7 +15,6 @@ r.get("/", async (req, res) => {
 r.post("/", auth, upload.single("file"), async (req, res) => {
   let url = (req.body.url || "").trim();
 
-  // Si fichier local → upload Cloudinary (conversion JPG)
   if (!url && req.file) {
     url = await uploadBufferToCloudinary(req.file.buffer);
   }
@@ -27,7 +26,7 @@ r.post("/", auth, upload.single("file"), async (req, res) => {
     uploadedBy: req.user.id,
   });
 
-  console.log("✅ Gallery item created:", item.url); // debug utile
+  console.log("✅ Gallery item created:", item.url);
   res.json(item);
 });
 
